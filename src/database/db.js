@@ -1,5 +1,4 @@
-const { QuickDB } = require("quick.db");
-// Sử dụng thư viện này nhưng không bắt nó build C++
-const db = new QuickDB(); 
+const jsoning = require("jsoning");
+const db = new jsoning("database.json"); // Nó sẽ tạo file database.json tự động
 
 module.exports = db;
