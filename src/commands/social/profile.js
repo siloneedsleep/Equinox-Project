@@ -41,7 +41,7 @@ module.exports = {
             .setTimestamp();
 
         if (await db.get(`premium_${target.id}`)) embed.setAuthor({ name: '💎 Người Dùng Premium' });
-        if (target.id === '914831312295165982') embed.setAuthor({ name: '👑 Vua Vibe Coding (Owner)' });
+        if (target.id === '914831312295165982') embed.setAuthor({ name: '👑 Owner' });
 
         await ctx.reply({ embeds: [embed] });
     }
