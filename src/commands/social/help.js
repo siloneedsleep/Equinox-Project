@@ -35,7 +35,7 @@ module.exports = {
             }
 
             // Optimize: Phân trang cho hosting (giảm payload)
-            const row = this.createNavigationButtons(embeds.length);
+            const row = this.createNavigationButtons();
             let currentPage = 0;
 
             const message = await interaction.editReply({
@@ -46,7 +46,7 @@ module.exports = {
 
             if (embeds.length <= 1) return;
 
-            // Optimize: Collecti filter với timeout ngắn cho hosting
+            // Optimize: Collector filter với timeout ngắn cho hosting
             const collector = message.createMessageComponentCollector({
                 filter: i => i.user.id === interaction.user.id,
                 time: 60000 // 1 phút timeout
@@ -191,7 +191,7 @@ module.exports = {
         return colors[category] || '#808080';
     },
 
-    createNavigationButtons(pageCount) {
+    createNavigationButtons() {
         return new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId('help_prev')
