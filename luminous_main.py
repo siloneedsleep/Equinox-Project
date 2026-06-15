@@ -42,7 +42,8 @@ async def on_ready():
         print(f"Đã đồng bộ {len(synced)} Slash Commands.")
     except Exception as e:
         print(f"❌ Lỗi đồng bộ lệnh: {e}")
-        
+
+    await bot.load_extension("cogs_shared.marry_khcuoc")
     luminous_presence_task.start()
 
 @tasks.loop(seconds=15)
