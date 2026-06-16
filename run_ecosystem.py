@@ -1,7 +1,10 @@
 import subprocess
 import time
 import sys
+from keep_alive import keep_alive
 
+# Chạy web server giả lập để Render quét thấy cổng mở
+keep_alive()
 def start_bot(script_name, color_code):
     print(f"{color_code}Đang kích hoạt tiến trình: {script_name}... \033[0m")
     return subprocess.Popen([sys.executable, script_name])
