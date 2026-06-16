@@ -89,6 +89,3 @@ async def luminous_presence_task():
 @luminous_presence_task.before_loop
 async def before_presence():
     await bot.wait_until_ready()
-
-if __name__ == "__main__":
-    bot.run(TOKENS["LUMINOUS"])
