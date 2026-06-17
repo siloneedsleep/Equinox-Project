@@ -13,27 +13,30 @@ class ChatBridge(commands.Cog):
     # ==============================================================================
     # 🎭 LỆNH SLASH: NHẬP HỒN BOT (CHỈ DÀNH CHO OWNER)
     # ==============================================================================
-    @app_commands.command(name="chat", description="[OWNER] Nhập vai bot để nhắn tin vào kênh (giả lập người thật)")
+    @app_commands.command(name="chat", description="[OWNER] Nhập vai bot để nhắn tin vào kênh được chỉ định")
     @app_commands.describe(
         noidung="Nội dung sếp muốn con bot thốt ra",
-        reply_id="ID của tin nhắn muốn bot trả lời (Để trống nếu chỉ chat bình thường)"
+        kenh="Kênh sếp muốn bot gửi tin nhắn vào (Để trống nếu muốn chat tại kênh hiện tại)",
+        reply_id="ID của tin nhắn muốn bot trả lời (Phải thuộc kênh đã chọn)"
     )
-    async def proxy_chat(self, interaction: discord.Interaction, noidung: str, reply_id: str = None):
+    async def proxy_chat(
+        self, 
+        interaction: discord.Interaction, 
+        noidung: str, 
+        kenh: discord.abc.GuildChannel = None, # Cho phép chọn bất kỳ kênh nào trong server
+        reply_id: str = None
+    ):
         r = await get_redis_connection()
         
-        # 👑 1. MẠCH KIỂM TRA QUYỀN OWNER TỐI CAO (ĐỒNG BỘ 2 LỚP)
+        # 👑 1. MẠCH KIỂM TRA QUYỀN OWNER TỐI CAO (ĐỒNG BỘ 2 LỚP)
         is_owner = False
-        
-        # Lớp 1: Check khẩn cấp qua file .env cấu hình ngoài
         env_owner = os.getenv("OWNER_DISCORD_ID")
         if env_owner and interaction.user.id == int(env_owner):
             is_owner = True
             
-        # Lớp 2: Check qua hệ thống lưu trữ Set của RAM Redis
         if not is_owner:
             is_owner = await r.sismember("equinox:staff:owners", interaction.user.id)
             
-        # Nếu cả 2 đường đều không nhận ra sếp -> Đuổi thẳng cổ
         if not is_owner:
             await interaction.response.send_message(
                 "❌ Tính giả mạo thế thiên hành đạo à? Lệnh này chỉ dành cho Owner tối cao thôi!", 
@@ -60,29 +63,48 @@ class ChatBridge(commands.Cog):
                 )
                 return
 
-        # Phản hồi ẩn cho sếp biết là lệnh đã ăn
-        await interaction.response.send_message("⏳ Đang hòa nhập linh hồn... bắt đầu múa phím!", ephemeral=True)
-
-        # ⌨️ 3. GIẢ LẬP GÕ PHÍM NHƯ NGƯỜI THẬT
-        typing_time = min(len(noidung) * 0.05, 4.0)
+        # 📍 3. XÁC ĐỊNH KÊNH ĐÍCH VÀ KIỂM TRA ĐIỀU KIỆN
+        # Nếu sếp không chọn kênh, mặc định lấy kênh hiện tại
+        target_channel = kenh if kenh else interaction.channel
         
-        # Bật trạng thái "Đang nhập dữ liệu..." (Typing...) ở dưới kênh
-        async with interaction.channel.typing():
+        # Kiểm tra xem kênh đó có phải kênh Text không (tránh gửi vào kênh Voice/Category)
+        if not isinstance(target_channel, (discord.TextChannel, discord.Thread)):
+            await interaction.response.send_message(
+                "❌ Bot chỉ có thể múa phím ở kênh Văn Bản hoặc Luồng (Thread) thôi sếp ơi!", 
+                ephemeral=True
+            )
+            return
+
+        # Phản hồi ẩn để sếp biết lệnh đã thông qua
+        await interaction.response.send_message(f"⏳ Đang hòa nhập linh hồn vào kênh {target_channel.mention}... bắt đầu múa phím!", ephemeral=True)
+
+        # ⌨️ 4. GIẢ LẬP GÕ PHÍM NHƯ NGƯỜI THẬT TRÊN KÊNH ĐÍCH
+        typing_time = min(len(noidung) * 0.05, 4.0)
+        async with target_channel.typing():
             await asyncio.sleep(typing_time)
 
-        # 📨 4. QUĂNG TIN NHẮN VÀO KÊNH
+        # 📨 5. QUĂNG TIN NHẮN VÀO KÊNH ĐÍCH (KÈM CHECK REPLY CHÉO KÊNH)
         if reply_id:
             try:
-                target_msg = await interaction.channel.fetch_message(int(reply_id))
+                # Ép fetch tin nhắn ngay tại kênh đích được chọn để xác thực
+                target_msg = await target_channel.fetch_message(int(reply_id))
                 await target_msg.reply(noidung)
-                await interaction.edit_original_response(content="✅ Nhập hồn thành công! Đã Reply thẳng mặt đối tượng.")
+                await interaction.edit_original_response(content=f"✅ Nhập hồn thành công! Đã phản hồi tin nhắn trong kênh {target_channel.mention}.")
             except discord.NotFound:
-                await interaction.edit_original_response(content="❌ Cười ẻ, sếp chép nhầm ID tin nhắn rồi! Chả tìm thấy cái tin nhắn đó trong kênh này.")
+                # Nếu tin nhắn tồn tại ở server nhưng KHÔNG nằm trong kênh đã chọn, discord.NotFound sẽ kích hoạt
+                await interaction.edit_original_response(
+                    content=f"❌ Không tìm thấy ID tin nhắn này trong kênh {target_channel.mention}! Sếp kiểm tra lại xem có chép nhầm tin nhắn của kênh khác qua không nha."
+                )
             except ValueError:
                 await interaction.edit_original_response(content="❌ ID tin nhắn phải là một chuỗi số cơ mà sếp!")
+            except discord.Forbidden:
+                await interaction.edit_original_response(content=f"❌ Bot thiếu quyền đọc lịch sử tin nhắn hoặc gửi bài tại kênh {target_channel.mention} rồi sếp.")
         else:
-            await interaction.channel.send(noidung)
-            await interaction.edit_original_response(content="✅ Nhập hồn thành công! Bot đã gửi tin nhắn.")
+            try:
+                await target_channel.send(noidung)
+                await interaction.edit_original_response(content=f"✅ Nhập hồn thành công! Bot đã gửi tin nhắn vào kênh {target_channel.mention}.")
+            except discord.Forbidden:
+                await interaction.edit_original_response(content=f"❌ Bot bị chặn quyền gửi tin nhắn tại kênh {target_channel.mention} rồi sếp.")
 
 async def setup(bot):
     await bot.add_cog(ChatBridge(bot))
