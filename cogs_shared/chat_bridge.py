@@ -1,3 +1,4 @@
+import os
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -20,11 +21,20 @@ class ChatBridge(commands.Cog):
     async def proxy_chat(self, interaction: discord.Interaction, noidung: str, reply_id: str = None):
         r = await get_redis_connection()
         
-        # 👑 1. CHỈ OWNER MỚI ĐƯỢC PHÉP "NHẬP HỒN"
-        role_bytes = await r.hget("equinox:system:staff_roles", str(interaction.user.id))
-        role = role_bytes.decode('utf-8') if isinstance(role_bytes, bytes) else str(role_bytes)
+        # 👑 1. MẠCH KIỂM TRA QUYỀN OWNER TỐI CAO (ĐỒNG BỘ 2 LỚP)
+        is_owner = False
         
-        if role != "owner":
+        # Lớp 1: Check khẩn cấp qua file .env cấu hình ngoài
+        env_owner = os.getenv("OWNER_DISCORD_ID")
+        if env_owner and interaction.user.id == int(env_owner):
+            is_owner = True
+            
+        # Lớp 2: Check qua hệ thống lưu trữ Set của RAM Redis
+        if not is_owner:
+            is_owner = await r.sismember("equinox:staff:owners", interaction.user.id)
+            
+        # Nếu cả 2 đường đều không nhận ra sếp -> Đuổi thẳng cổ
+        if not is_owner:
             await interaction.response.send_message(
                 "❌ Tính giả mạo thế thiên hành đạo à? Lệnh này chỉ dành cho Owner tối cao thôi!", 
                 ephemeral=True
@@ -32,7 +42,7 @@ class ChatBridge(commands.Cog):
             return
 
         # ⏳ 2. KIỂM TRA CA TRỰC NGHIÊM NGẶT
-        is_overdrive = await r.hget("equinox:system:config", "event_overdrive") == "ON"
+        is_overdrive = await r.hget("equinox:system:config", "event_overdrive") == b"ON" or await r.hget("equinox:system:config", "event_overdrive") == "ON"
         if not is_overdrive:
             cycle_bytes = await r.hget("equinox:system:config", "current_cycle")
             cycle = cycle_bytes.decode('utf-8') if isinstance(cycle_bytes, bytes) else str(cycle_bytes)
@@ -54,7 +64,6 @@ class ChatBridge(commands.Cog):
         await interaction.response.send_message("⏳ Đang hòa nhập linh hồn... bắt đầu múa phím!", ephemeral=True)
 
         # ⌨️ 3. GIẢ LẬP GÕ PHÍM NHƯ NGƯỜI THẬT
-        # Công thức: Mỗi 1 ký tự tốn 0.05 giây để gõ. Max là 4 giây để mem không phải đợi quá lâu
         typing_time = min(len(noidung) * 0.05, 4.0)
         
         # Bật trạng thái "Đang nhập dữ liệu..." (Typing...) ở dưới kênh
