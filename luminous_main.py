@@ -51,15 +51,27 @@ async def global_luminous_check(ctx):
 
 @bot.event
 async def on_ready():
-    print(f"☀️ Luminous (ID: {bot.user.id}) đã thức tỉnh!")
-    await init_redis_system()
+    print(f"☀️ {bot.user.name} đã thức tỉnh trực tuyến!")
     
+    # Khởi tạo kết nối Redis hạch tâm
+    await init_redis_system() 
+    
+    # --- MẠCH ÉP QUYỀN OWNER BẢO MẬT (DỰ PHÒNG CẢ 2 ĐƯỜNG) ---
     try:
-        r = await get_redis_connection()
+        # Đường 1: Tự hỏi Discord API xem ai tạo ra Bot
         app_info = await bot.application_info()
-        await r.hset("equinox:system:staff_roles", str(app_info.owner.id), "owner")
+        owner_id = app_info.owner.id
+        
+        # Đường 2: Nếu có cấu hình file .env thì ưu tiên đè lên luôn
+        env_owner = os.getenv("OWNER_DISCORD_ID")
+        if env_owner:
+            owner_id = int(env_owner)
+            
+        # Ghi chặt ngai vàng lên Redis vĩnh viễn
+        await redis_client.sadd("equinox:staff:owners", owner_id)
+        print(f"👑 [Hạch Tâm] Đã đồng bộ ID Owner tối cao: {owner_id} lên RAM Đám mây Redis!")
     except Exception as e:
-        print(f"❌ Lỗi cấu hình Owner: {e}")
+        print(f"❌ Lỗi mạch gác cổng nhân sự: {e}")
         
     current_dir = os.path.dirname(os.path.abspath(__file__))
     cogs_dir = os.path.join(current_dir, 'cogs_shared')
