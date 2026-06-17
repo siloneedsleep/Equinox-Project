@@ -44,7 +44,7 @@ async def global_tenebris_check(ctx):
         # ⏰ DÙNG ĐỒNG HỒ THỰC ĐỂ CHẶN LỆNH LỆCH CA
         cycle = get_realtime_cycle()
         if cycle == "DAY" and ctx.command.name not in ["staff", "profile", "marry", "check-marry"]:
-            await ctx.send("☀️ Đang là ca ngày (00:00 - 12:00). Nhìn lại đồng hồ hộ cái sếp ơi! Vợ tao đang trực, biến ra chỗ khác!")
+            await ctx.send("☀️ Đang là ca ngày (00:00 - 12:00). Nhìn lại đồng hồ hộ cái! Vợ tao đang trực, biến ra chỗ khác!")
             return False
     return True
 
