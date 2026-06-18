@@ -6,7 +6,7 @@ from config.settings import COLORS
 from database.redis_client import get_redis_connection
 
 # ==========================================
-# 🃏 GIAO DIỆN UI NÚT BẤM BLACKJACK
+# 🃏 GIAO DIỆN UI NÚT BẤM BLACKJACK (ĐÃ SỬA LỖI)
 # ==========================================
 class BlackjackView(discord.ui.View):
     def __init__(self, player, bet_amount, player_hand, dealer_hand, deck, redis_conn):
@@ -17,6 +17,7 @@ class BlackjackView(discord.ui.View):
         self.dealer_hand = dealer_hand
         self.deck = deck
         self.redis = redis_conn
+        self.message = None # Sẽ gán sau khi gửi tin nhắn
 
     def calculate_total(self, hand):
         total = 0
@@ -36,25 +37,30 @@ class BlackjackView(discord.ui.View):
                 total += 1
         return total
 
-    async def end_game(self, interaction, result, multiplier=2.0):
+    async def end_game(self, interaction: discord.Interaction, result, multiplier=2.0):
+        # Khóa toàn bộ nút bấm ngay khi kết thúc sới
         for child in self.children:
             child.disabled = True
         
-        user_key = f"equinox:user:{self.player.id}"
+        wallet_key = f"equinox:economy:wallets:{self.player.id}"
         
+        # MẠCH TOÁN HỌC MỚI: Vì tiền cược đã bị trừ ngay từ lúc gõ lệnh để chống bug tiền
         if result == "WIN":
             win_amount = int(self.bet_amount * multiplier)
+            # Cộng lại cả gốc lẫn lãi thắng cược vào ví
+            await self.redis.hincrby(wallet_key, "aequis", win_amount)
             profit = win_amount - self.bet_amount
-            await self.redis.hincrby(user_key, "balance_dirty", profit)
             color = COLORS["tenebris_action"]
             title = "🃏 BLACKJACK - THẮNG ĐẬM!"
             desc = f"Chúc mừng <@{self.player.id}>! Nhà cái đền mạng **+{profit:,} Star** bẩn!"
         elif result == "LOSE":
-            await self.redis.hincrby(user_key, "balance_dirty", -self.bet_amount)
+            # Thua thì không cần trừ nữa vì đã giam tiền cược từ đầu game
             color = COLORS["tenebris_error"]
             title = "💀 BLACKJACK - TRẮNG TAY!"
             desc = f"Gà! <@{self.player.id}> vừa cúng cho sòng bạc **-{self.bet_amount:,} Star** bẩn."
-        else: # TIE
+        else: # TIE (HÒA)
+            # Hòa thì trả lại đúng số tiền gốc ban đầu đã giam
+            await self.redis.hincrby(wallet_key, "aequis", self.bet_amount)
             color = 0x808080
             title = "🤝 BLACKJACK - HÒA!"
             desc = f"Nhà cái và <@{self.player.id}> bằng điểm. Trả lại tiền cược **{self.bet_amount:,} Star**."
@@ -83,6 +89,21 @@ class BlackjackView(discord.ui.View):
             embed.set_field_at(0, name=f"🃏 Bài của bạn ({p_total})", value=" ".join(str(x) for x in self.player_hand), inline=True)
             await interaction.response.edit_message(embed=embed, view=self)
 
+    # Xử lý tự động đóng sới nếu thanh niên ngủ quên không đánh bạc
+    async def on_timeout(self):
+        for child in self.children:
+            child.disabled = True
+        if self.message:
+            try:
+                # Mặc định coi như bỏ bài -> Xử lý thua cược giải phóng bàn đấu
+                embed = self.message.embeds[0]
+                embed.title = "⏱️ SỚI BẠC BỊ HUỶ - QUÁ THỜI GIAN!"
+                embed.description = f"<@{self.player.id}> ngủ quên khi đang đánh bạc. Nhà cái tịch thu **-{self.bet_amount:,} Star** bẩn cược chân giò!"
+                await self.message.edit(embed=embed, view=self)
+            except Exception:
+                pass
+
+
     @discord.ui.button(label="Dằn Bài (Stand)", style=discord.ButtonStyle.danger, emoji="✋")
     async def stand_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.player.id:
@@ -103,6 +124,7 @@ class BlackjackView(discord.ui.View):
         else:
             await self.end_game(interaction, "TIE")
 
+
 # ==========================================
 # ⚙️ MODULE CHÍNH: SÒNG BẠC CHỢ ĐEN CA ĐÊM
 # ==========================================
@@ -120,9 +142,9 @@ class CasinoNgam(commands.Cog):
         is_tai = choice in ["tai", "t"]
         
         r = await get_redis_connection()
-        user_key = f"equinox:user:{ctx.author.id}"
+        wallet_key = f"equinox:economy:wallets:{ctx.author.id}"
         
-        dirty_bal = int(await r.hget(user_key, "balance_dirty") or 0)
+        dirty_bal = int(await r.hget(wallet_key, "aequis") or 0)
         
         if amount.lower() == "all":
             bet_amount = dirty_bal
@@ -138,6 +160,9 @@ class CasinoNgam(commands.Cog):
         if bet_amount > dirty_bal:
             return await ctx.send(f"Mày chỉ có **{dirty_bal:,} Star** bẩn thôi! Bốc phét ít thôi!")
 
+        # 🔒 KHÓA TRỪ TIỀN TRƯỚC NGAY LẬP TỨC ĐỂ CHỐNG SPAM BUG TIỀN
+        await r.hincrby(wallet_key, "aequis", -bet_amount)
+
         # Cơ chế xúc xắc
         d1, d2, d3 = random.randint(1, 6), random.randint(1, 6), random.randint(1, 6)
         total = d1 + d2 + d3
@@ -147,21 +172,22 @@ class CasinoNgam(commands.Cog):
         jackpot_chance = 0.05
         partner_tier = int(await r.hget(f"equinox:partner:{ctx.guild.id}", "tier") or 0)
         if partner_tier >= 2:
-            jackpot_chance = 0.10 # Tăng lên 10% nổ hũ nếu là VIP Partner
+            jackpot_chance = 0.10 
             
         is_jackpot = random.random() < jackpot_chance 
         
         if is_tai == result_is_tai:
             multiplier = 3 if is_jackpot else 2
             win_amount = bet_amount * multiplier
+            # Hoàn lại tiền cược + tiền thắng thưởng
+            await r.hincrby(wallet_key, "aequis", win_amount)
             profit = win_amount - bet_amount
-            await r.hincrby(user_key, "balance_dirty", profit)
             
             title = "🎉 NỔ HŨ TÀI XỈU!" if is_jackpot else "🎲 TÀI XỈU - HÚP!"
             color = COLORS["tenebris_action"]
             desc = f"Xúc xắc đổ: **{d1} - {d2} - {d3} = {total}** ({'TÀI' if result_is_tai else 'XỈU'})\nChúc mừng <@{ctx.author.id}> đã húp được **+{profit:,} Star** bẩn!"
         else:
-            await r.hincrby(user_key, "balance_dirty", -bet_amount)
+            # Thua thì không cần cộng trừ gì nữa vì tiền gốc đã bốc hơi lúc gõ lệnh
             title = "💀 TÀI XỈU - CÚT!"
             color = COLORS["tenebris_error"]
             desc = f"Xúc xắc đổ: **{d1} - {d2} - {d3} = {total}** ({'TÀI' if result_is_tai else 'XỈU'})\nNgu thì chết! <@{ctx.author.id}> bị lột sạch **-{bet_amount:,} Star** bẩn!"
@@ -173,8 +199,8 @@ class CasinoNgam(commands.Cog):
     @commands.command(name="bj", aliases=["blackjack"])
     async def play_bj(self, ctx, amount: str):
         r = await get_redis_connection()
-        user_key = f"equinox:user:{ctx.author.id}"
-        dirty_bal = int(await r.hget(user_key, "balance_dirty") or 0)
+        wallet_key = f"equinox:economy:wallets:{ctx.author.id}"
+        dirty_bal = int(await r.hget(wallet_key, "aequis") or 0)
         
         if amount.lower() == "all":
             bet_amount = dirty_bal
@@ -187,6 +213,9 @@ class CasinoNgam(commands.Cog):
         if bet_amount <= 0 or bet_amount > dirty_bal:
             return await ctx.send(f"Mày chỉ có **{dirty_bal:,} Star** bẩn thôi! Két sắt ngầm sắp cạn rồi đấy!")
 
+        # 🔒 KHÓA TRỪ TIỀN TRƯỚC NGAY LẬP TỨC ĐỂ CHỐNG SPAM ĐÈ LỆNH
+        await r.hincrby(wallet_key, "aequis", -bet_amount)
+
         # Tạo và xáo trộn bộ bài
         cards = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
         deck = cards * 4
@@ -196,7 +225,6 @@ class CasinoNgam(commands.Cog):
         dealer_hand = [deck.pop(), deck.pop()]
 
         view = BlackjackView(ctx.author, bet_amount, player_hand, dealer_hand, deck, r)
-        
         p_total = view.calculate_total(player_hand)
         
         embed = discord.Embed(title="🃏 SÒNG BẠC BLACKJACK CHỢ ĐEN", color=COLORS["tenebris_main"])
@@ -204,13 +232,21 @@ class CasinoNgam(commands.Cog):
         embed.add_field(name=f"🃏 Bài của bạn ({p_total})", value=" ".join(str(x) for x in player_hand), inline=True)
         embed.add_field(name="🕴️ Nhà cái", value=f"{dealer_hand[0]} ❓", inline=True)
         
-        # Nếu ra ngay xì dách từ 2 lá đầu
+        # 🔥 FIX CHÍ MẠNG: Xử lý xì dách ăn ngay lập tức mà không đi qua view.end_game(ctx) gây crash
         if p_total == 21:
-            await ctx.send(embed=embed)
-            await view.end_game(ctx, "WIN", multiplier=2.5) # Thưởng Blackjack x2.5 cược
-            return
+            win_amount = int(bet_amount * 2.5) # Thưởng Blackjack x2.5 cược gốc
+            await r.hincrby(wallet_key, "aequis", win_amount)
+            profit = win_amount - bet_amount
+            
+            embed.title = "🃏 BLACKJACK - ĂN NGAY XÌ DÁCH!"
+            embed.color = COLORS["tenebris_action"]
+            embed.description = f"🔥 Vừa lên sới đã bốc được 21 điểm tối cao! <@{ctx.author.id}> lột sạch sòng bạc húp **+{profit:,} Star** bẩn!"
+            embed.set_field_at(1, name=f"🕴️ Nhà cái ({view.calculate_total(dealer_hand)})", value=" ".join(str(x) for x in dealer_hand), inline=True)
+            return await ctx.send(embed=embed)
 
-        await ctx.send(embed=embed, view=view)
+        # Gửi tin nhắn và lưu bối cảnh tin nhắn vào view để xử lý timeout tự động khóa sới nếu mem bỏ trốn
+        msg = await ctx.send(embed=embed, view=view)
+        view.message = msg
 
 async def setup(bot):
     await bot.add_cog(CasinoNgam(bot))
