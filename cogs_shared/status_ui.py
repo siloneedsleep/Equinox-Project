@@ -14,6 +14,7 @@ class TextModal(discord.ui.Modal, title="Cấu Hình Nội Dung Status"):
     details = discord.ui.TextInput(label="Dòng 1 (Nội dung chính)", placeholder="VD: Đang cày view...", required=False, max_length=128)
     state = discord.ui.TextInput(label="Dòng 2 (Nội dung phụ)", placeholder="VD: Trận 5 - Chuỗi thắng...", required=False, max_length=128)
     image_text = discord.ui.TextInput(label="Dòng 3 (Chữ khi di chuột vào ảnh)", placeholder="VD: Equinox VIP", required=False, max_length=128)
+    image_url = discord.ui.TextInput(label="Link Ảnh (Tùy chọn)", placeholder="https://...", required=False)
 
     async def on_submit(self, interaction: discord.Interaction):
         embed = discord.Embed(title="✅ Đã Lưu Nội Dung Status", color=interaction.client.theme_color)
@@ -22,6 +23,11 @@ class TextModal(discord.ui.Modal, title="Cấu Hình Nội Dung Status"):
             embed.add_field(name="Dòng 1", value=self.details.value, inline=False)
         if self.state.value:
             embed.add_field(name="Dòng 2", value=self.state.value, inline=False)
+        if self.image_text.value:
+            embed.add_field(name="Chữ di chuột", value=self.image_text.value, inline=False)
+        if self.image_url.value:
+            embed.set_thumbnail(url=self.image_url.value)
+            
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 class ButtonModal(discord.ui.Modal, title="Cấu Hình Nút Bấm"):
@@ -63,7 +69,7 @@ class StatusControlView(discord.ui.View):
     @discord.ui.button(label="Đăng Ký Trạng Thái", style=discord.ButtonStyle.success, emoji="🚀")
     async def submit_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         embed = discord.Embed(title="🎉 THIẾT LẬP TRẠNG THÁI THÀNH CÔNG!", color=0x00FF00)
-        embed.description = "Cấu hình của bạn đã được tải lên hệ thống Equinox và đồng bộ với Gateway."
+        embed.description = "Cấu hình của bạn đã được tải lên hệ thống Equinox Cloud và đồng bộ với Gateway."
         embed.add_field(name="⚠️ LƯU Ý QUAN TRỌNG", value="Hiện tại trạng thái này chỉ hiển thị khi bạn đang mở app Discord.\nĐể giữ cho Profile luôn sáng đèn 24/7 kể cả khi tắt máy, hãy dùng lệnh:\n👉 `/livestatus on`", inline=False)
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
