@@ -10,9 +10,14 @@ class AuthRequiredView(discord.ui.View):
     def __init__(self, luminous_id: str, tenebris_id: str, redirect_uri: str, main_server_link: str):
         super().__init__(timeout=None)
 
-        # Link ủy quyền: identify activities.write rpc
-        l_link = f"https://discord.com/oauth2/authorize?client_id={luminous_id}&redirect_uri={redirect_uri}&response_type=code&scope=identify%20activities.write%20rpc&state=luminous"
-        t_link = f"https://discord.com/oauth2/authorize?client_id={tenebris_id}&redirect_uri={redirect_uri}&response_type=code&scope=identify%20activities.write%20rpc&state=tenebris"
+        # Link ủy quyền tích hợp Mời Bot & Cấp quyền Profile (Phải có identify để lấy User ID)
+        # Scope: identify, bot, activities.write
+        # Luminous: integration_type=1 (User Install)
+        # Tenebris: integration_type=0 (Guild Install)
+        scopes = "identify%20bot%20activities.write"
+
+        l_link = f"https://discord.com/oauth2/authorize?client_id={luminous_id}&redirect_uri={redirect_uri}&response_type=code&scope={scopes}&state=luminous&integration_type=1"
+        t_link = f"https://discord.com/oauth2/authorize?client_id={tenebris_id}&redirect_uri={redirect_uri}&response_type=code&scope={scopes}&state=tenebris&integration_type=0"
 
         self.add_item(discord.ui.Button(label="Mời & Ủy quyền Luminous", url=l_link, style=discord.ButtonStyle.link, emoji="☀️"))
         self.add_item(discord.ui.Button(label="Mời & Ủy quyền Tenebris", url=t_link, style=discord.ButtonStyle.link, emoji="🌙"))
@@ -139,7 +144,7 @@ class StatusUI(commands.Cog):
         # 1. Check Quyền (Admin bypass, Member check Key)
         user_level = await self.db.get_user_level(user_id)
         has_key = await self.db.has_premium(user_id)
-        
+
         if user_level < 2 and not has_key:
             return await interaction.response.send_message("❌ Lệnh này chỉ dành cho Admin+ hoặc người có Voice Premium Key.", ephemeral=True)
 

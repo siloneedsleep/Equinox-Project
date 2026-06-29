@@ -65,7 +65,18 @@ Hệ thống tự động hoán đổi trạng thái giữa hai bot theo thời 
 - Python 3.10+
 - **Redis thuần** (Bạn có thể dùng Redis từ tab *Databases* trên Panel hoặc dịch vụ Redis Cloud miễn phí).
 
-### 2. Cấu hình trên Pterodactyl Panel
+### 2. Cấu hình trên Pterodactyl Panel (Wispbyte)
+
+#### 🔗 Cách lấy OAuth2 Callback URL
+Để tính năng `/status add` hoạt động, bạn cần cấu hình URL Callback trong **Discord Developer Portal**:
+1. Truy cập **Applications** -> Chọn Bot của bạn -> **OAuth2** -> **General**.
+2. Tại mục **Redirects**, thêm URL theo định dạng:
+   `http://<IP_HOST_CỦA_BẠN>:<SERVER_PORT>/callback`
+   *(Ví dụ: `http://103.123.45.67:8080/callback`)*
+3. **SERVER_PORT** chính là Port được cấp trên giao diện Wispbyte (mục Network).
+4. Nhấn **Save Changes**.
+
+#### 📝 Nạp cấu hình Bot
 Bạn có hai cách để nạp cấu hình:
 
 **Cách 1: Sử dụng File (Khuyên dùng)**
