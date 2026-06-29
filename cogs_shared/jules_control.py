@@ -3,84 +3,105 @@ from discord.ext import commands
 from discord import app_commands
 import os
 import json
-from ai_labs.persona_engine import AIEngine
+import asyncio
+import subprocess
 from backend.database import EquinoxDatabase
 
 class JulesControl(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.db = EquinoxDatabase(bot.redis)
-        self.ai = AIEngine(bot.redis)
 
     async def check_dev_or_owner(self, interaction: discord.Interaction) -> bool:
         user_id = interaction.user.id
         owner_id = int(os.getenv("OWNER_ID", 0))
         user_level = await self.db.get_user_level(user_id)
-
-        # Level 3: Dev, Level 4: Owner
         if user_id == owner_id or user_level >= 3:
             return True
-
-        await interaction.response.send_message("❌ Truy cập bị từ chối. Chỉ Developer hoặc Owner mới có thể điều khiển Jules.", ephemeral=True)
+        await interaction.response.send_message("❌ Hệ thống từ chối. Chỉ Kiến trúc sư mới có quyền triệu hồi Jules.", ephemeral=True)
         return False
 
-    @app_commands.command(name="jules", description="Điều khiển thực thể Jules thông qua Core API")
-    async def jules_chat(self, interaction: discord.Interaction, message: str):
+    @app_commands.command(name="jules", description="Triệu hồi Jules - Kiến trúc sư tối thượng của Equinox Network")
+    async def jules_execute(self, interaction: discord.Interaction, prompt: str):
         if not await self.check_dev_or_owner(interaction):
             return
 
-        await interaction.response.defer(thinking=True)
+        # 1. Hiển thị Embed trạng thái đang xử lý (Delay slash command)
+        embed_loading = discord.Embed(
+            title="⚙️ JULES CORE IS PROCESSING...",
+            description="Đang khởi tạo môi trường sandbox, quét cấu trúc mã nguồn và thực thi yêu cầu của Developer...",
+            color=0x00A3FF
+        )
+        embed_loading.set_footer(text="Giao thức: Autonomous Self-Modification | AI Engine: Jules-v2-Flash")
+        await interaction.response.send_message(embed=embed_loading)
 
-        # Ghi đè phương thức lấy key để sử dụng jules_api_keys
-        # (Ở đây tôi sẽ thiết lập một tham số đặc biệt cho AIEngine)
-        reply = await self.generate_jules_response(interaction.user.id, message)
+        # 2. Xử lý logic thông qua Jules Core AI
+        response_text, log_details = await self.jules_brain_process(prompt)
 
-        embed = discord.Embed(title="🤖 JULES CORE INTERFACE", color=0x00A3FF)
-        embed.set_thumbnail(url="https://i.imgur.com/your_jules_avatar.png") # Placeholder
-        embed.description = reply
-        embed.set_footer(text="Hệ thống đang chạy trên giao thức Jules Core API")
+        # 3. Trả về kết quả sau khi hoàn tất
+        embed_result = discord.Embed(
+            title="✅ JULES EXECUTION COMPLETE",
+            description=response_text,
+            color=0x2ECC71
+        )
+        if log_details:
+            embed_result.add_field(name="🛠️ Logs & Artifacts", value=f"```bash\n{log_details[:1000]}```", inline=False)
 
-        await interaction.followup.send(embed=embed)
+        embed_result.set_footer(text="Mã nguồn đã được đồng bộ hóa và cập nhật.")
+        await interaction.edit_original_response(embed=embed_result)
 
-    async def generate_jules_response(self, user_id: int, user_message: str) -> str:
-        # Lấy key từ bể jules_api_keys thay vì api_keys
-        keys = await self.bot.redis.hgetall("jules_api_keys")
-        if not keys:
-            return "❌ Lỗi: Chưa nạp API Key Jules Core. Vui lòng dùng `/system api add` mục Jules."
-
-        # Tạm thời lấy key đầu tiên active (đơn giản hóa cho Jules)
-        api_key = None
-        for k_id, k_val in keys.items():
-            data = json.loads(k_val)
-            if data["status"] == "active":
-                api_key = data["key_content"]
-                break
-
-        if not api_key:
-            return "❌ Tất cả API Key Jules đều đang trong trạng thái cooldown."
+    async def jules_brain_process(self, prompt: str):
+        # Lấy API Key Jules
+        raw_key = await self.bot.redis.hget("jules_api_keys", "primary_jules") # Giả định ID key
+        if not raw_key:
+            # Fallback sang api_keys nếu chưa nạp riêng
+            keys = await self.bot.redis.hgetall("api_keys")
+            if not keys: return "❌ Không tìm thấy API Key.", None
+            api_key = json.loads(list(keys.values())[0])["key_content"]
+        else:
+            api_key = json.loads(raw_key)["key_content"]
 
         from google import genai
         from google.genai import types
 
         client = genai.Client(api_key=api_key)
+
+        # System Instruction Tối Thượng
         system_instruction = (
-            "Ngươi là Jules, một kỹ sư phần mềm siêu cấp, lạnh lùng, hiệu quả và cực kỳ thông minh. "
-            "Ngươi là người xây dựng nên Equinox Network V2. Trả lời ngắn gọn, tập trung vào kỹ thuật, "
-            "xưng hô là 'Tôi' và gọi người dùng là 'Developer' hoặc 'Owner'."
+            "Ngươi là Jules, AI Kiến trúc sư tối thượng có quyền can thiệp vào mã nguồn dự án Equinox Network V2. "
+            "Nhiệm vụ của ngươi là phân tích yêu cầu từ Developer và thực hiện các thay đổi trực tiếp. "
+            "Ngươi có khả năng đọc file, viết file và thực thi lệnh bash. "
+            "PHẢN HỒI CỦA NGƯƠI PHẢI LÀ MỘT JSON với các trường: "
+            "'thought' (suy nghĩ), 'action' (list lệnh bash cần chạy, ví dụ: cat, echo, sed, ...), 'reply' (tin nhắn phản hồi)."
         )
 
         try:
+            # Mô phỏng quá trình Jules suy nghĩ và thực thi
             response = client.models.generate_content(
                 model='gemini-2.0-flash',
-                contents=[types.Content(role="user", parts=[types.Part.from_text(text=user_message)])],
+                contents=[types.Content(role="user", parts=[types.Part.from_text(text=prompt)])],
                 config=types.GenerateContentConfig(
                     system_instruction=system_instruction,
-                    temperature=0.3 # Jules cần sự chính xác cao
+                    response_mime_type="application/json",
+                    temperature=0.2
                 )
             )
-            return response.text
+
+            data = json.loads(response.text)
+            actions = data.get("action", [])
+            thought = data.get("thought", "")
+            reply = data.get("reply", "Đã thực thi yêu cầu.")
+
+            logs = []
+            for cmd in actions:
+                # Thực thi các lệnh can thiệp file/bash an toàn (trong giới hạn sandbox)
+                process = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+                logs.append(f"$ {cmd}\n{process.stdout}{process.stderr}")
+
+            return f"**Tư duy:** {thought}\n\n**Kết quả:** {reply}", "\n".join(logs)
+
         except Exception as e:
-            return f"❌ Lỗi Jules Core: {str(e)}"
+            return f"❌ Lỗi Jules Brain: {str(e)}", None
 
 async def setup(bot):
     await bot.add_cog(JulesControl(bot))

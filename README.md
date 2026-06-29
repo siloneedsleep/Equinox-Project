@@ -29,7 +29,12 @@ Hệ thống tự động hoán đổi trạng thái giữa hai bot theo thời 
 - **Luminous (06:00 - 17:59)**: Văn minh, hoàng gia, quản lý **Aequor** (Tiền sạch).
 - **Tenebris (18:00 - 05:59)**: Giang hồ, chợ đen, thao túng **Aequis** (Tiền bẩn).
 
-### 2. Rich Presence Tối Thượng (/status add)
+### 2. Jules Core - Self-Modifying AI (/jules)
+Đặc quyền dành cho **Silo** và Developer:
+- **Autonomous Architecture**: Jules có khả năng tự phân tích, đọc/viết mã nguồn và thực thi các lệnh hệ thống để tự sửa lỗi hoặc nâng cấp tính năng ngay trong lúc bot đang chạy.
+- **Smart Execution**: Hiển thị quá trình tư duy và log thực thi chi tiết.
+
+### 3. Rich Presence Tối Thượng (/status add)
 Đặc quyền dành cho Admin+ và Voice Premium Key:
 - **Double-Modal UI**: Tùy chỉnh tên app, nội dung, ảnh và nút bấm trên Profile thật.
 - **Proxy Presence (/livestatus)**: Duy trì Profile luôn sáng đèn 24/7 kể cả khi tắt máy thông qua WebSocket Proxy.
