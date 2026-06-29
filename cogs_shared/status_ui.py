@@ -10,14 +10,11 @@ class AuthRequiredView(discord.ui.View):
     def __init__(self, luminous_id: str, tenebris_id: str, redirect_uri: str, main_server_link: str):
         super().__init__(timeout=None)
 
-        # Link ủy quyền tích hợp Mời Bot & Cấp quyền Profile (Phải có identify để lấy User ID)
-        # Scope: identify, bot, activities.write
-        # Luminous: integration_type=1 (User Install)
-        # Tenebris: integration_type=0 (Guild Install)
-        scopes = "identify%20bot%20activities.write"
+        # Link ủy quyền Profile (Giữ identify để định danh User ID trong Backend)
+        scopes = "identify%20activities.write"
 
-        l_link = f"https://discord.com/oauth2/authorize?client_id={luminous_id}&redirect_uri={redirect_uri}&response_type=code&scope={scopes}&state=luminous&integration_type=1"
-        t_link = f"https://discord.com/oauth2/authorize?client_id={tenebris_id}&redirect_uri={redirect_uri}&response_type=code&scope={scopes}&state=tenebris&integration_type=0"
+        l_link = f"https://discord.com/oauth2/authorize?client_id={luminous_id}&redirect_uri={redirect_uri}&response_type=code&scope={scopes}&state=luminous"
+        t_link = f"https://discord.com/oauth2/authorize?client_id={tenebris_id}&redirect_uri={redirect_uri}&response_type=code&scope={scopes}&state=tenebris"
 
         self.add_item(discord.ui.Button(label="Mời & Ủy quyền Luminous", url=l_link, style=discord.ButtonStyle.link, emoji="☀️"))
         self.add_item(discord.ui.Button(label="Mời & Ủy quyền Tenebris", url=t_link, style=discord.ButtonStyle.link, emoji="🌙"))
