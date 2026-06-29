@@ -134,7 +134,9 @@ class StatusUI(commands.Cog):
         self.bot = bot
         self.db = EquinoxDatabase(bot.redis)
 
-    @app_commands.command(name="status_add", description="[VIP] Tùy chỉnh trạng thái hiển thị trên Profile Discord thật")
+    status_group = app_commands.Group(name="status", description="[VIP] Tùy chỉnh trạng thái hiển thị trên Profile Discord thật")
+
+    @status_group.command(name="add", description="Thiết lập nội dung trạng thái mới")
     async def status_add(self, interaction: discord.Interaction):
         user_id = interaction.user.id
 
