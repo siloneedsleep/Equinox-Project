@@ -1,0 +1,12 @@
+{
+    "luminous_token": "YOUR_LUMINOUS_TOKEN",
+    "tenebris_token": "YOUR_TENEBRIS_TOKEN",
+    "luminous_client_id": "",
+    "luminous_client_secret": "",
+    "tenebris_client_id": "",
+    "tenebris_client_secret": "",
+    "oauth2_redirect_uri": "http://your-domain.com/callback",
+    "redis_uri": "redis://:password@host:port",
+    "owner_id": 0,
+    "port": 8080
+}

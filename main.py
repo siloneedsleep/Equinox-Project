@@ -1,4 +1,6 @@
 import asyncio
+import signal
+import sys
 import redis.asyncio as redis
 from core.bot import EquinoxBot
 from backend.web_server import EquinoxWebServer
@@ -8,64 +10,94 @@ from config.settings import (
     COLOR_LUMINOUS, COLOR_TENEBRIS
 )
 
-async def run_ecosystem():
-    # 1. Kết nối KeyDB tập trung
-    redis_client = redis.from_url(REDIS_URI, decode_responses=True)
-    
-    # 2. Khởi tạo hai thực thể Bot đối lập
-    luminous = EquinoxBot(
-        bot_name="Luminous",
-        command_prefix="l!",
-        theme_color=COLOR_LUMINOUS,
-        persona="Luminous"
-    )
-    
-    tenebris = EquinoxBot(
-        bot_name="Tenebris",
-        command_prefix="t!",
-        theme_color=COLOR_TENEBRIS,
-        persona="Tenebris"
-    )
+class EquinoxEcosystem:
+    def __init__(self):
+        self.redis_client = None
+        self.luminous = None
+        self.tenebris = None
+        self.web_server = None
+        self.presence_manager = None
+        self.is_running = True
 
-    # 3. Khởi tạo Web Server và Presence Proxy
-    web_server = EquinoxWebServer(redis_client)
-    presence_manager = ProxyPresenceManager(redis_client)
+    async def startup(self):
+        print("="*50)
+        print("   🪐 EQUINOX NETWORK V2 - PTERODACTYL EDITION")
+        print("="*50)
 
-    # 4. Danh sách các Extensions dùng chung
-    shared_extensions = [
-        "cogs_shared.status_ui",
-        "cogs_shared.status_handler",
-        "cogs_shared.economy_ui",
-        "cogs_shared.shift_manager",
-        "cogs_shared.interaction_labs",
-        "cogs_shared.system_core",
-        "cogs_shared.system_services",
-        "cogs_shared.jules_control"
-    ]
+        # 1. Khởi tạo Redis với cơ chế retry
+        try:
+            self.redis_client = redis.from_url(REDIS_URI, decode_responses=True)
+            await self.redis_client.ping()
+            print("[System] Kết nối KeyDB/Redis thành công.")
+        except Exception as e:
+            print(f"[Critical] Không thể kết nối Redis: {e}")
+            sys.exit(1)
 
-    async def setup_bot(bot):
-        # Hook để load cogs sau khi bot sẵn sàng (hoặc trong setup_hook)
-        for ext in shared_extensions:
-            await bot.load_extension(ext)
+        # 2. Khởi tạo Bots
+        self.luminous = EquinoxBot("Luminous", "l!", COLOR_LUMINOUS, "Luminous")
+        self.tenebris = EquinoxBot("Tenebris", "t!", COLOR_TENEBRIS, "Tenebris")
 
-    # Đăng ký setup task
-    await setup_bot(luminous)
-    await setup_bot(tenebris)
+        # 3. Khởi tạo Services
+        self.web_server = EquinoxWebServer(self.redis_client)
+        self.presence_manager = ProxyPresenceManager(self.redis_client)
 
-    print("[Equinox Core] --- HỆ SINH THÁI EQUINOX NETWORK V2 ĐANG KHỞI CHẠY ---")
-    
-    # 5. Chạy đa luồng asyncio.gather()
-    await asyncio.gather(
-        luminous.start(LUMINOUS_TOKEN),
-        tenebris.start(TENEBRIS_TOKEN),
-        web_server.start(),
-        presence_manager.sync_loop()
-    )
+        # 4. Load Extensions
+        shared_exts = [
+            "cogs_shared.status_ui",
+            "cogs_shared.status_handler",
+            "cogs_shared.economy_ui",
+            "cogs_shared.shift_manager",
+            "cogs_shared.interaction_labs",
+            "cogs_shared.system_core",
+            "cogs_shared.system_services",
+            "cogs_shared.jules_control"
+        ]
+
+        for bot in [self.luminous, self.tenebris]:
+            for ext in shared_exts:
+                await bot.load_extension(ext)
+            print(f"[{bot.bot_name}] Đã nạp {len(shared_exts)} module thành công.")
+
+        # 5. Chạy đa luồng
+        print("[System] Đang khởi chạy toàn bộ thực thể...")
+
+        tasks = [
+            self.luminous.start(LUMINOUS_TOKEN),
+            self.tenebris.start(TENEBRIS_TOKEN),
+            self.web_server.start(),
+            self.presence_manager.sync_loop()
+        ]
+
+        await asyncio.gather(*tasks)
+
+    async def shutdown(self):
+        if not self.is_running: return
+        self.is_running = False
+
+        print("\n[System] Đang thực hiện quy trình tắt bot an toàn (Graceful Shutdown)...")
+        if self.luminous: await self.luminous.close()
+        if self.tenebris: await self.tenebris.close()
+        if self.redis_client: await self.redis_client.close()
+        print("[System] Đã ngắt toàn bộ kết nối. Tạm biệt!")
+        sys.exit(0)
+
+def handle_signal(ecosystem):
+    loop = asyncio.get_event_loop()
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        loop.add_signal_handler(sig, lambda: asyncio.create_task(ecosystem.shutdown()))
 
 if __name__ == "__main__":
+    ecosystem = EquinoxEcosystem()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    # Đăng ký signal handlers cho Pterodactyl Panel
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        loop.add_signal_handler(sig, lambda: asyncio.create_task(ecosystem.shutdown()))
+
     try:
-        asyncio.run(run_ecosystem())
+        loop.run_until_complete(ecosystem.startup())
     except KeyboardInterrupt:
-        print("\n[Equinox Core] Đã dập cầu dao. Ngắt kết nối toàn bộ hệ sinh thái.")
-    except Exception as e:
-        print(f"\n[Equinox Core] Lỗi khởi động nghiêm trọng: {e}")
+        pass
+    finally:
+        loop.close()

@@ -59,30 +59,35 @@ Hệ thống tự động hoán đổi trạng thái giữa hai bot theo thời 
 
 ---
 
-## 🛠️ Hướng Dẫn Cài Đặt
+## 🛠️ Hướng Dẫn Cài Đặt (Pterodactyl / VPS)
 
 ### 1. Yêu cầu hệ thống
 - Python 3.10+
-- KeyDB (hoặc Redis)
-- Google Gemini API Keys
+- Redis hoặc KeyDB bên ngoài (External Database).
 
-### 2. Cài đặt thư viện
-```bash
-pip install -r requirements.txt
-```
+### 2. Cấu hình trên Pterodactyl Panel
+Bạn có hai cách để nạp cấu hình:
 
-### 3. Biến môi trường (.env)
-Cần cấu hình các biến sau trên Render hoặc file `.env`:
-- `LUMINOUS_TOKEN` & `TENEBRIS_TOKEN`
-- `LUMINOUS_CLIENT_ID` & `LUMINOUS_CLIENT_SECRET`
-- `REDIS_URI`: Địa chỉ kết nối KeyDB.
-- `OWNER_ID`: ID Discord của **Silo**.
-- `OAUTH2_REDIRECT_URI`: Link callback của web server.
+**Cách 1: Sử dụng File (Khuyên dùng)**
+- Tải toàn bộ mã nguồn lên File Manager.
+- Đổi tên file `config.json.example` thành `config.json`.
+- Điền các Token, API Key và URI Redis vào file này.
 
-### 4. Khởi chạy
+**Cách 2: Sử dụng Biến môi trường (Variables)**
+Thêm các biến sau vào mục **Startup** của Panel:
+- `LUMINOUS_TOKEN`, `TENEBRIS_TOKEN`
+- `REDIS_URI`
+- `OWNER_ID`
+- `SERVER_PORT`: Bot sẽ tự động bắt port này.
+
+### 3. Startup Command
+Thiết lập lệnh khởi chạy trên Panel:
 ```bash
 python main.py
 ```
+
+### 4. Quy trình tắt Bot
+Hệ thống đã tích hợp **Graceful Shutdown**. Khi bạn nhấn nút **Stop** hoặc **Kill** trên Panel, Bot sẽ nhận tín hiệu và đóng toàn bộ kết nối Redis/Discord một cách an toàn trước khi thoát.
 
 ---
 

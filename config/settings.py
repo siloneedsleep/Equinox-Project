@@ -1,36 +1,42 @@
 import os
+import json
 from dotenv import load_dotenv
 
+# Ưu tiên load .env nếu có
 load_dotenv()
 
+def get_config():
+    # Thử đọc từ config.json trước (Tiện cho Pterodactyl File Manager)
+    if os.path.exists("config.json"):
+        with open("config.json", "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+_c = get_config()
+
 # Discord Bot Tokens
-LUMINOUS_TOKEN = os.getenv("LUMINOUS_TOKEN")
-TENEBRIS_TOKEN = os.getenv("TENEBRIS_TOKEN")
+LUMINOUS_TOKEN = os.getenv("LUMINOUS_TOKEN") or _c.get("luminous_token")
+TENEBRIS_TOKEN = os.getenv("TENEBRIS_TOKEN") or _c.get("tenebris_token")
 
 # OAuth2 Credentials
-LUMINOUS_CLIENT_ID = os.getenv("LUMINOUS_CLIENT_ID")
-LUMINOUS_CLIENT_SECRET = os.getenv("LUMINOUS_CLIENT_SECRET")
+LUMINOUS_CLIENT_ID = os.getenv("LUMINOUS_CLIENT_ID") or _c.get("luminous_client_id")
+LUMINOUS_CLIENT_SECRET = os.getenv("LUMINOUS_CLIENT_SECRET") or _c.get("luminous_client_secret")
+TENEBRIS_CLIENT_ID = os.getenv("TENEBRIS_CLIENT_ID") or _c.get("tenebris_client_id")
+TENEBRIS_CLIENT_SECRET = os.getenv("TENEBRIS_CLIENT_SECRET") or _c.get("tenebris_client_secret")
 
-TENEBRIS_CLIENT_ID = os.getenv("TENEBRIS_CLIENT_ID")
-TENEBRIS_CLIENT_SECRET = os.getenv("TENEBRIS_CLIENT_SECRET")
-
-OAUTH2_REDIRECT_URI = os.getenv("OAUTH2_REDIRECT_URI")
+OAUTH2_REDIRECT_URI = os.getenv("OAUTH2_REDIRECT_URI") or _c.get("oauth2_redirect_uri")
 
 # Infrastructure
-REDIS_URI = os.getenv("REDIS_URI", "redis://localhost:6379")
-PORT = int(os.getenv("PORT", 8000))
+# Pterodactyl thường cấp SERVER_PORT
+REDIS_URI = os.getenv("REDIS_URI") or _c.get("redis_uri", "redis://localhost:6379")
+PORT = int(os.getenv("SERVER_PORT") or os.getenv("PORT") or _c.get("port", 8080))
 
 # System Configuration
-OWNER_ID = int(os.getenv("OWNER_ID", 0))
-MAIN_GUILD_ID = int(os.getenv("MAIN_GUILD_ID", 0))
+OWNER_ID = int(os.getenv("OWNER_ID") or _c.get("owner_id", 0))
+MAIN_GUILD_ID = int(os.getenv("MAIN_GUILD_ID") or _c.get("main_guild_id", 0))
 
-# Default Links
-DEFAULT_MAIN_SERVER_LINK = os.getenv("DEFAULT_MAIN_SERVER_LINK", "https://discord.gg/equinox")
-
-# Shift Times (HH:MM)
+# Colors & Shifts
+COLOR_LUMINOUS = 0xFCE883
+COLOR_TENEBRIS = 0x2B2D31
 LUMINOUS_SHIFT_START = "06:00"
 TENEBRIS_SHIFT_START = "18:00"
-
-# Colors
-COLOR_LUMINOUS = 0xFCE883  # Vàng hoàng gia
-COLOR_TENEBRIS = 0x2B2D31  # Đen xám giang hồ

@@ -22,54 +22,49 @@ class EquinoxBot(commands.Bot):
         self.is_active_shift = False
 
     async def setup_hook(self):
-        # Kết nối Redis đa luồng (KeyDB compatible)
-        self.redis = redis.from_url(REDIS_URI, decode_responses=True)
+        # Kết nối Redis với cơ chế tự động reconnect
+        self.redis = redis.from_url(
+            REDIS_URI,
+            decode_responses=True,
+            retry_on_timeout=True,
+            health_check_interval=30
+        )
         self.pubsub = self.redis.pubsub()
-        await self.pubsub.subscribe("equinox_system")
 
-        # Chạy listener Pub/Sub ngầm
-        self.loop.create_task(self.pubsub_listener())
-
-        print(f"[{self.bot_name}] Đang kết nối KeyDB và thiết lập Pub/Sub...")
+        try:
+            await self.pubsub.subscribe("equinox_system")
+            self.loop.create_task(self.pubsub_listener())
+            print(f"[{self.bot_name}] Đã đăng ký Pub/Sub.")
+        except Exception as e:
+            print(f"[{self.bot_name}] Lỗi khởi tạo Pub/Sub: {e}")
 
     async def pubsub_listener(self):
-        async for message in self.pubsub.listen():
-            if message["type"] == "message":
+        while True:
+            try:
+                async for message in self.pubsub.listen():
+                    if message["type"] == "message":
+                        data = json.loads(message["data"])
+                        if data.get("action") == "shift_change":
+                            await self.handle_shift_change(data.get("active_persona"))
+                        self.dispatch("system_event", data)
+            except redis.ConnectionError:
+                print(f"[{self.bot_name}] Mất kết nối Redis. Đang thử kết nối lại sau 5 giây...")
+                await asyncio.sleep(5)
+                # Tự động subscribe lại sau khi reconnect
                 try:
-                    data = json.loads(message["data"])
-                    action = data.get("action")
-
-                    if action == "shift_change":
-                        new_persona = data.get("active_persona")
-                        await self.handle_shift_change(new_persona)
-
-                    # Dispatch event nội bộ để các Cogs có thể lắng nghe
-                    self.dispatch("system_event", data)
-                except Exception as e:
-                    print(f"[{self.bot_name}] Lỗi xử lý Pub/Sub: {e}")
+                    await self.pubsub.subscribe("equinox_system")
+                except: pass
+            except Exception as e:
+                print(f"[{self.bot_name}] Pub/Sub Listener Error: {e}")
+                await asyncio.sleep(1)
 
     async def handle_shift_change(self, active_persona: str):
         if self.persona == active_persona:
             self.is_active_shift = True
             await self.change_presence(status=discord.Status.online, activity=discord.Game(name="Equinox Network V2 | Active"))
-            print(f"[{self.bot_name}] Đã vào ca trực. Trạng thái: Online.")
         else:
             self.is_active_shift = False
             await self.change_presence(status=discord.Status.invisible)
-            print(f"[{self.bot_name}] Đã hết ca trực. Trạng thái: Invisible.")
-
-    async def load_module_cogs(self, extensions: list):
-        for ext in extensions:
-            try:
-                await self.load_extension(ext)
-                print(f"[{self.bot_name}] Loaded extension: {ext}")
-            except Exception as e:
-                print(f"[{self.bot_name}] Failed to load extension {ext}: {e}")
-
-    async def on_ready(self):
-        print(f"[{self.bot_name}] Hệ thống Identity {self.user.name} đã sẵn sàng.")
-        # Kiểm tra ca trực ngay khi khởi động (logic này sẽ được shift_manager cập nhật sau)
-        pass
 
     async def close(self):
         if self.pubsub:
