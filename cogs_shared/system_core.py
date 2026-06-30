@@ -66,17 +66,12 @@ class SystemCore(commands.Cog):
         token = await self.db.create_premium_key(duration_days)
         await ctx.send(f"🔑 Đã tạo Key: `{token}` ({duration_days} ngày)", ephemeral=True)
 
-    @system_group.command(name="api_add", description="Nạp API Key vào bể xoay tua")
-    @discord.app_commands.choices(target=[
-        discord.app_commands.Choice(name="Ecosystem", value="ecosystem"),
-        discord.app_commands.Choice(name="Jules", value="jules")
-    ])
-    async def api_add(self, ctx: commands.Context, target: str, token_id: str, key_content: str):
+    @system_group.command(name="api_add", description="Nạp API Key Gemini vào hệ thống")
+    async def api_add(self, ctx: commands.Context, token_id: str, key_content: str):
         if ctx.author.id != OWNER_ID: return await ctx.send("❌ Chỉ Owner.", ephemeral=True)
-        redis_key = "api_keys" if target == "ecosystem" else "jules_api_keys"
         payload = {"key_content": key_content, "status": "active", "fail_count": 0, "cooldown_until": 0}
-        await self.bot.redis.hset(redis_key, token_id, json.dumps(payload))
-        await ctx.send(f"✅ Đã nạp API Key `{token_id}` vào mục **{target}**", ephemeral=True)
+        await self.bot.redis.hset("api_keys", token_id, json.dumps(payload))
+        await ctx.send(f"✅ Đã nạp API Key `{token_id}` vào hệ thống xoay tua thành công.", ephemeral=True)
 
     @commands.hybrid_command(name="redeem", description="Kích hoạt Premium Key")
     async def redeem(self, ctx: commands.Context, token: str):

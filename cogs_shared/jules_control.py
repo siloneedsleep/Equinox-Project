@@ -49,13 +49,11 @@ class JulesControl(commands.Cog):
         await interaction.edit_original_response(embed=embed_result)
 
     async def jules_brain_process(self, prompt: str):
-        raw_key = await self.bot.redis.hget("jules_api_keys", "primary_jules")
-        if not raw_key:
-            keys = await self.bot.redis.hgetall("api_keys")
-            if not keys: return "❌ Không tìm thấy API Key.", None
-            api_key = json.loads(list(keys.values())[0])["key_content"]
-        else:
-            api_key = json.loads(raw_key)["key_content"]
+        from config.settings import JULES_TOKEN
+        api_key = JULES_TOKEN
+
+        if not api_key:
+            return "❌ Không tìm thấy biến môi trường JULES_TOKEN. Vui lòng nạp API Key của Jules.", None
 
         from google import genai
         from google.genai import types

@@ -26,6 +26,7 @@ _c = get_config()
 LUMINOUS_TOKEN = os.getenv("LUMINOUS_TOKEN") or _c.get("luminous_token")
 TENEBRIS_TOKEN = os.getenv("TENEBRIS_TOKEN") or _c.get("tenebris_token")
 QUANGIA_TOKEN = os.getenv("QUANGIA_TOKEN") or _c.get("quangia_token")
+JULES_TOKEN = os.getenv("JULES_TOKEN") or _c.get("jules_token")
 
 # OAuth2 Credentials
 LUMINOUS_CLIENT_ID = os.getenv("LUMINOUS_CLIENT_ID") or _c.get("luminous_client_id")
