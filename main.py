@@ -6,7 +6,7 @@ from core.bot import EquinoxBot
 from backend.web_server import EquinoxWebServer
 from backend.presence_proxy import ProxyPresenceManager
 from config.settings import (
-    LUMINOUS_TOKEN, TENEBRIS_TOKEN, REDIS_URI,
+    LUMINOUS_TOKEN, TENEBRIS_TOKEN, QUANGIA_TOKEN, REDIS_URI,
     COLOR_LUMINOUS, COLOR_TENEBRIS
 )
 
@@ -63,7 +63,7 @@ class EquinoxEcosystem:
         tasks = [
             self.luminous.start(LUMINOUS_TOKEN),
             self.tenebris.start(TENEBRIS_TOKEN),
-            self.butler.start(BUTLER_TOKEN),
+            self.butler.start(QUANGIA_TOKEN),
             self.web_server.start(),
             self.presence_manager.sync_loop()
         ]

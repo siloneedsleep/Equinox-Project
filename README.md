@@ -92,7 +92,7 @@ Bạn có hai cách để nạp cấu hình:
 
 **Cách 2: Sử dụng Biến môi trường (Variables)**
 Thêm các biến sau vào mục **Startup** của Panel:
-- `LUMINOUS_TOKEN`, `TENEBRIS_TOKEN`
+- `LUMINOUS_TOKEN`, `TENEBRIS_TOKEN`, `QUANGIA_TOKEN`
 - `REDIS_URI`: Ví dụ `redis://:password@host:port`
 - `OWNER_ID`
 - `SERVER_PORT`: Bot sẽ tự động bắt port này.
