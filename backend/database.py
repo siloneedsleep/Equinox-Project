@@ -116,3 +116,42 @@ class EquinoxDatabase:
     async def get_will(self, user_id: int) -> Optional[int]:
         spouse_id = await self.redis.hget("underground_wills", str(user_id))
         return int(spouse_id) if spouse_id else None
+
+    # --- HỆ THỐNG IDEA & BUTLER ---
+    async def add_idea(self, user_id: int, content: str) -> str:
+        idea_id = str(uuid.uuid4())[:8].upper()
+        payload = {
+            "id": idea_id,
+            "user_id": user_id,
+            "content": content,
+            "status": "pending",
+            "created_at": int(time.time())
+        }
+        await self.redis.hset("system_ideas", idea_id, json.dumps(payload))
+        return idea_id
+
+    async def get_idea(self, idea_id: str) -> Optional[dict]:
+        data = await self.redis.hget("system_ideas", idea_id)
+        return json.loads(data) if data else None
+
+    async def update_idea(self, idea_id: str, updates: dict):
+        data = await self.get_idea(idea_id)
+        if data:
+            data.update(updates)
+            await self.redis.hset("system_ideas", idea_id, json.dumps(data))
+
+    async def get_accepted_ideas(self) -> List[dict]:
+        all_ideas = await self.redis.hgetall("system_ideas")
+        accepted = []
+        for val in all_ideas.values():
+            idea = json.loads(val)
+            if idea["status"] == "accepted":
+                accepted.append(idea)
+        return accepted
+
+    async def set_log_channel(self, guild_id: int, channel_id: int):
+        await self.redis.hset("system_config", f"log_channel:{guild_id}", channel_id)
+
+    async def get_log_channel(self, guild_id: int) -> Optional[int]:
+        cid = await self.redis.hget("system_config", f"log_channel:{guild_id}")
+        return int(cid) if cid else None

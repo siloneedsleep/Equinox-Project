@@ -15,6 +15,7 @@ class EquinoxEcosystem:
         self.redis_client = None
         self.luminous = None
         self.tenebris = None
+        self.butler = None
         self.web_server = None
         self.presence_manager = None
         self.is_running = True
@@ -33,7 +34,7 @@ class EquinoxEcosystem:
             print(f"[Critical] Không thể kết nối Redis: {e}")
             sys.exit(1)
 
-        # 2. Danh sách Extensions dùng chung
+        # 2. Danh sách Extensions
         shared_exts = [
             "cogs_shared.status_ui",
             "cogs_shared.status_handler",
@@ -45,9 +46,12 @@ class EquinoxEcosystem:
             "cogs_shared.jules_control"
         ]
 
-        # 3. Khởi tạo Bots (Extensions sẽ được load trong setup_hook của từng bot)
+        butler_exts = shared_exts + ["cogs_shared.butler_core", "cogs_shared.idea_system"]
+
+        # 3. Khởi tạo Bots
         self.luminous = EquinoxBot("Luminous", "l!", COLOR_LUMINOUS, "Luminous", shared_exts)
         self.tenebris = EquinoxBot("Tenebris", "t!", COLOR_TENEBRIS, "Tenebris", shared_exts)
+        self.butler = EquinoxBot("Quản Gia", "b!", 0x3498DB, "Butler", butler_exts)
 
         # 4. Khởi tạo Services
         self.web_server = EquinoxWebServer(self.redis_client)
@@ -59,6 +63,7 @@ class EquinoxEcosystem:
         tasks = [
             self.luminous.start(LUMINOUS_TOKEN),
             self.tenebris.start(TENEBRIS_TOKEN),
+            self.butler.start(BUTLER_TOKEN),
             self.web_server.start(),
             self.presence_manager.sync_loop()
         ]
@@ -71,6 +76,7 @@ class EquinoxEcosystem:
         print("\n[System] Graceful Shutdown...")
         if self.luminous: await self.luminous.close()
         if self.tenebris: await self.tenebris.close()
+        if self.butler: await self.butler.close()
         if self.redis_client: await self.redis_client.close()
         sys.exit(0)
 

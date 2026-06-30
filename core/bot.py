@@ -39,7 +39,6 @@ class EquinoxBot(commands.Bot):
             socket_connect_timeout=15
         )
 
-        # Kiểm tra kết nối Redis trước khi tiếp tục
         try:
             await self.redis.ping()
             print(f"[{self.bot_name}] Kết nối Redis thành công.")
@@ -56,7 +55,7 @@ class EquinoxBot(commands.Bot):
         except Exception as e:
             print(f"[{self.bot_name}] Lỗi khởi tạo Pub/Sub: {e}")
 
-        # 3. Load Cogs SAU KHI Redis đã sẵn sàng
+        # 3. Load Cogs
         for ext in self.shared_extensions:
             try:
                 await self.load_extension(ext)
@@ -71,8 +70,12 @@ class EquinoxBot(commands.Bot):
                     if message["type"] == "message":
                         try:
                             data = json.loads(message["data"])
-                            if data.get("action") == "shift_change":
+                            action = data.get("action")
+                            if action == "shift_change":
                                 await self.handle_shift_change(data.get("active_persona"))
+                            elif action == "emergency_shutdown":
+                                print(f"[{self.bot_name}] NHẬN LỆNH DẬP CẦU DAO KHẨN CẤP!")
+                                await self.close()
                             self.dispatch("system_event", data)
                         except json.JSONDecodeError:
                             continue
@@ -87,6 +90,13 @@ class EquinoxBot(commands.Bot):
                 await asyncio.sleep(2)
 
     async def handle_shift_change(self, active_persona: str):
+        if self.persona == "Butler":
+            # Quản Gia luôn túc trực, không bị ảnh hưởng bởi giao ca
+            if not self.is_active_shift:
+                self.is_active_shift = True
+                await self.change_presence(status=discord.Status.online, activity=discord.Activity(type=discord.ActivityType.listening, name="Mệnh lệnh của Silo 👑"))
+            return
+
         if self.persona == active_persona:
             self.is_active_shift = True
             status = discord.Status.online if self.persona == "Luminous" else discord.Status.dnd
@@ -98,7 +108,6 @@ class EquinoxBot(commands.Bot):
 
     async def on_ready(self):
         print(f"[{self.bot_name}] Identity {self.user.name} đã sẵn sàng.")
-        # Đồng bộ Slash Commands
         try:
             from config.settings import MAIN_GUILD_ID
             if MAIN_GUILD_ID:
@@ -114,8 +123,10 @@ class EquinoxBot(commands.Bot):
 
     async def close(self):
         if self.pubsub:
-            await self.pubsub.unsubscribe("equinox_system")
-            await self.pubsub.close()
+            try:
+                await self.pubsub.unsubscribe("equinox_system")
+                await self.pubsub.close()
+            except: pass
         if self.redis:
             await self.redis.close()
         await super().close()

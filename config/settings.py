@@ -25,6 +25,7 @@ _c = get_config()
 # Discord Bot Tokens
 LUMINOUS_TOKEN = os.getenv("LUMINOUS_TOKEN") or _c.get("luminous_token")
 TENEBRIS_TOKEN = os.getenv("TENEBRIS_TOKEN") or _c.get("tenebris_token")
+BUTLER_TOKEN = os.getenv("BUTLER_TOKEN") or _c.get("butler_token")
 
 # OAuth2 Credentials
 LUMINOUS_CLIENT_ID = os.getenv("LUMINOUS_CLIENT_ID") or _c.get("luminous_client_id")

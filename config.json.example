@@ -1,6 +1,7 @@
 {
-    "luminous_token": "YOUR_LUMINOUS_TOKEN",
-    "tenebris_token": "YOUR_TENEBRIS_TOKEN",
+    "luminous_token": "YOUR_L_TOKEN",
+    "tenebris_token": "YOUR_T_TOKEN",
+    "butler_token": "YOUR_B_TOKEN",
     "luminous_client_id": "",
     "luminous_client_secret": "",
     "tenebris_client_id": "",
