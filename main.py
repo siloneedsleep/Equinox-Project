@@ -64,9 +64,14 @@ class EquinoxEcosystem:
             self.luminous.start(LUMINOUS_TOKEN),
             self.tenebris.start(TENEBRIS_TOKEN),
             self.butler.start(QUANGIA_TOKEN),
-            self.web_server.start(),
             self.presence_manager.sync_loop()
         ]
+
+        # Tự động tắt Web Server nội bộ nếu cấu hình dùng Vercel
+        if "vercel.app" not in OAUTH2_REDIRECT_URI:
+            tasks.append(self.web_server.start())
+        else:
+            print("[System] Đang sử dụng Vercel Serverless cho OAuth2. Web Server nội bộ đã tắt.")
 
         await asyncio.gather(*tasks)
 

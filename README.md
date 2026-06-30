@@ -84,6 +84,26 @@ Vercel được thiết kế cho Serverless (Web tĩnh), không phù hợp để
 
 ---
 
+## 🌩️ Triển Khai Hybrid (OAuth2 qua Vercel HTTPS)
+
+Nếu host chính của bạn không có HTTPS (như Wispbyte), bạn có thể dùng **Vercel** chỉ để xử lý luồng đăng nhập (OAuth2), còn Bot vẫn chạy trên host cũ.
+
+### 1. Triển khai luồng Web lên Vercel
+1. Truy cập thư mục `vercel/` trong source code.
+2. Đẩy chỉ thư mục này lên một Repo GitHub mới (hoặc dùng Vercel CLI).
+3. Kết nối Repo đó với Vercel.
+4. Cấu hình **Environment Variables** trên Vercel:
+   - `LUMINOUS_CLIENT_ID`, `LUMINOUS_CLIENT_SECRET`
+   - `TENEBRIS_CLIENT_ID`, `TENEBRIS_CLIENT_SECRET`
+   - `REDIS_URI`: (Phải dùng chung Redis với Host chính của Bot)
+   - `OAUTH2_REDIRECT_URI`: Link Vercel cấp (Ví dụ: `https://your-app.vercel.app/callback`)
+
+### 2. Cấu hình Bot chính
+- Trong `config.json` của Bot (trên Pterodactyl), hãy điền `OAUTH2_REDIRECT_URI` là link Vercel của bạn.
+- Bot sẽ tự động nhận diện và tắt Web Server nội bộ để nhường quyền xử lý cho Vercel.
+
+---
+
 ## 🛠️ Hướng Dẫn Cài Đặt (Pterodactyl / VPS)
 
 ### 1. Yêu cầu hệ thống
