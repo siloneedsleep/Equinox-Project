@@ -64,5 +64,7 @@ class EquinoxWebServer:
     async def start(self):
         runner = web.AppRunner(self.app)
         await runner.setup()
-        await web.TCPSite(runner, '0.0.0.0', PORT).start()
-        print(f"[Web] Port {PORT} active.")
+        # Bind to 0.0.0.0 là bắt buộc để các dịch vụ Cloud như Render có thể routing HTTPS
+        site = web.TCPSite(runner, '0.0.0.0', PORT)
+        await site.start()
+        print(f"[Web Server] Đã kích hoạt tại Port {PORT}. Sẵn sàng nhận Callback HTTPS.")

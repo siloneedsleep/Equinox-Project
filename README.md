@@ -64,6 +64,26 @@ Hệ thống tự động hoán đổi trạng thái giữa hai bot theo thời 
 
 ---
 
+## 🚀 Triển Khai Với HTTPS (Khuyên Dùng)
+
+Để sử dụng tính năng OAuth2 (Chỉnh sửa Profile) mà không bị lỗi trình duyệt chặn, bạn nên triển khai Bot trên các nền tảng hỗ trợ **HTTPS** miễn phí như **Render** hoặc **Railway**.
+
+### 1. Tại sao không dùng Vercel?
+Vercel được thiết kế cho Serverless (Web tĩnh), không phù hợp để chạy Bot Discord (cần kết nối WebSocket 24/7). Bot sẽ bị Offline sau vài giây nếu dùng Vercel.
+
+### 2. Cách triển khai lên Render.com (Miễn phí)
+1. Đẩy code lên một Repo **GitHub** cá nhân.
+2. Tại Render, tạo một **Web Service** mới và kết nối với Repo đó.
+3. Cấu hình các **Environment Variables**:
+   - `LUMINOUS_TOKEN`, `TENEBRIS_TOKEN`, `QUANGIA_TOKEN`
+   - `REDIS_URI`
+   - `OAUTH2_REDIRECT_URI`: Sử dụng link Render cấp (Ví dụ: `https://equinox-bot.onrender.com/callback`)
+4. **Build Command**: `pip install -r requirements.txt`
+5. **Start Command**: `python main.py`
+6. Sao chép link `https://.../callback` và dán vào **Discord Developer Portal** mục Redirects.
+
+---
+
 ## 🛠️ Hướng Dẫn Cài Đặt (Pterodactyl / VPS)
 
 ### 1. Yêu cầu hệ thống

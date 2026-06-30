@@ -35,10 +35,10 @@ TENEBRIS_CLIENT_SECRET = os.getenv("TENEBRIS_CLIENT_SECRET") or _c.get("tenebris
 
 OAUTH2_REDIRECT_URI = os.getenv("OAUTH2_REDIRECT_URI") or _c.get("oauth2_redirect_uri")
 
-# Infrastructure
+# Infrastructure (Hỗ trợ Render, Railway, Pterodactyl)
 REDIS_URI = os.getenv("REDIS_URI") or _c.get("redis_uri", "redis://localhost:6379")
-# Pterodactyl SERVER_PORT
-PORT = int(os.getenv("SERVER_PORT") or os.getenv("PORT") or _c.get("port", 8080))
+# Ưu tiên PORT (Render/Railway), sau đó SERVER_PORT (Pterodactyl), mặc định 3000
+PORT = int(os.getenv("PORT") or os.getenv("SERVER_PORT") or _c.get("port", 3000))
 
 # System Configuration
 OWNER_ID = int(os.getenv("OWNER_ID") or _c.get("owner_id", 0))
